@@ -504,6 +504,28 @@ Fotos: ${ST.fotos.length>0?ST.fotos.length+" adjuntas":"sin fotos"}`;
     ST.sessions.push({nombre:ST.nombre,skin:sk,nivel:parsed.vista_advisor?.nivel_ticket,bday:b,time:new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})});
     updateSessions();
     renderResult(parsed,b,sk,concerns);
+    // Guardar en Sheets directamente desde el navegador
+try {
+  const av = parsed.vista_advisor || {};
+  const ev = parsed.evaluacion_piel || {};
+  const b2 = bdayInfo(ST.dob);
+  const params = new URLSearchParams({
+    nombre: ST.nombre,
+    edad: b2 ? b2.age : "",
+    ciudad: ST.ciudad,
+    tipo_piel: ev.tipo_detectado || "",
+    preocupaciones: ST.preocp.join(", "),
+    estado_medico: ST.embarazo,
+    nivel_rutina: ST.nivel,
+    ingredientes_clave: (av.ingredientes_clave_a_buscar || []).join(", "),
+    nivel_ticket: av.nivel_ticket || "",
+    diagnostico: av.diagnostico_comercial || ""
+  });
+  fetch("https://script.google.com/macros/s/AKfycbw9oNvan-bC9_ekfwfd-X2KiCpcTFwa4uhqK8tvigWN2wiAhMrhd4cAyYeWB_X9nMAkww/exec?" + params.toString(), {
+    method: "GET",
+    mode: "no-cors"
+  });
+} catch(e) {}
     go("result");
   }catch(err){
     document.getElementById("photo-err").classList.remove("hidden");
