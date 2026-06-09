@@ -492,7 +492,7 @@ Fotos: ${ST.fotos.length>0?ST.fotos.length+" adjuntas":"sin fotos"}`;
     const res=await fetch("/api/skin-advisor",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:4000,system:SYSTEM_PROMPT,messages:[{role:"user",content:msgContent}]})
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:8000,system:SYSTEM_PROMPT,messages:[{role:"user",content:msgContent}]})
     });
 
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error("API "+res.status+": "+(e?.error?.message||res.statusText));}
