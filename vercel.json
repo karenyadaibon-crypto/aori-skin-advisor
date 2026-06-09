@@ -1,11 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/skin-advisor.js", "use": "@vercel/node" },
-    { "src": "index.html", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/skin-advisor", "dest": "/api/skin-advisor.js" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/skin-advisor", "destination": "/api/skin-advisor.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
