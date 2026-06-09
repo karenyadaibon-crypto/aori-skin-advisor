@@ -90,6 +90,17 @@ input:focus{border-color:#D44010}
 .screen.active{display:block}
 .screen.active.genscreen{display:flex}
 .btn-row-center{display:flex;gap:12px;justify-content:center;padding:10px 0 48px}
+
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  body { background: #FDFAF8 !important; }
+  .header { display: none !important; }
+  .btn-row-center { display: none !important; }
+  #adv-section { display: none !important; }
+  .screen { display: block !important; }
+  .wrap { padding: 0 !important; max-width: 100% !important; }
+  @page { margin: 10mm; size: A4; }
+}
 </style>
 </head>
 <body>
