@@ -317,7 +317,7 @@ Responde ÚNICAMENTE en JSON puro, sin markdown ni backticks:
       "ingrediente": "nombre",
       "beneficio": "qué hace para sus preocupaciones específicas",
       "como_usar": "momento del día y forma de aplicación",
-      "origen_asiatico": "por qué es especialmente valorado en K-Beauty o J-Beauty, sin mencionar marcas"
+      "origen_asiatico": "marca o producto asiático famoso que lo usa"
     }
   ],
   "quimicos_no": [
@@ -349,7 +349,7 @@ Responde ÚNICAMENTE en JSON puro, sin markdown ni backticks:
   }
 }
 
-REGLAS: Mínimo 5 en quimicos_si y 3 en quimicos_no. Sin retinol si embarazada/lactando. Tono premium y cálido. Solo JSON puro. NUNCA menciones marcas comerciales, nombres de productos ni líneas de skincare — solo ingredientes activos y tipos de productos genéricos. La asesora Lesley armará las rutinas con los productos Aori basándose en este análisis.`;
+REGLAS: Mínimo 5 en quimicos_si y 3 en quimicos_no. Sin retinol si embarazada/lactando. Tono premium y cálido. Solo JSON puro.`;
 
 const CONCERNS = [
   {id:"manchas",label:"Manchas",icon:"🟤"},{id:"arrugas",label:"Arrugas",icon:"〰️"},
@@ -504,28 +504,6 @@ Fotos: ${ST.fotos.length>0?ST.fotos.length+" adjuntas":"sin fotos"}`;
     ST.sessions.push({nombre:ST.nombre,skin:sk,nivel:parsed.vista_advisor?.nivel_ticket,bday:b,time:new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})});
     updateSessions();
     renderResult(parsed,b,sk,concerns);
-    // Guardar en Sheets directamente desde el navegador
-try {
-  const av = parsed.vista_advisor || {};
-  const ev = parsed.evaluacion_piel || {};
-  const b2 = bdayInfo(ST.dob);
-  const params = new URLSearchParams({
-    nombre: ST.nombre,
-    edad: b2 ? b2.age : "",
-    ciudad: ST.ciudad,
-    tipo_piel: ev.tipo_detectado || "",
-    preocupaciones: ST.preocp.join(", "),
-    estado_medico: ST.embarazo,
-    nivel_rutina: ST.nivel,
-    ingredientes_clave: (av.ingredientes_clave_a_buscar || []).join(", "),
-    nivel_ticket: av.nivel_ticket || "",
-    diagnostico: av.diagnostico_comercial || ""
-  });
-  fetch("https://script.google.com/macros/s/AKfycbw9oNvan-bC9_ekfwfd-X2KiCpcTFwa4uhqK8tvigWN2wiAhMrhd4cAyYeWB_X9nMAkww/exec?" + params.toString(), {
-    method: "GET",
-    mode: "no-cors"
-  });
-} catch(e) {}
     go("result");
   }catch(err){
     document.getElementById("photo-err").classList.remove("hidden");
@@ -589,52 +567,149 @@ function ri(item){
 
 function renderResult(r,b,sk,concerns){
   const ev=r.evaluacion_piel||{};const av=r.vista_advisor||{};
-  const tags=ST.preocp.map(id=>{const c=CONCERNS.find(x=>x.id===id);return c?`<span class="concern-tag">${c.label}</span>`:""}).join("");
-  const bdayHtml=b?`<div style="font-size:12px;color:#8B2500;margin-bottom:10px;">🎂 ${b.day} de ${b.month}${b.soon?" · en "+b.days+" días":""}</div>`:"";
+  const preocp=ST.preocp.map(id=>{const c=CONCERNS.find(x=>x.id===id);return c?c.label:""}).filter(Boolean);
+  const bdayHtml=b&&b.soon?`<span style="background:#FCE7F0;color:#8B2500;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:8px;">🎂 en ${b.days} días</span>`:"";
+
+  // Rutina mañana/noche compacta
+  const rutinaHtml=(pasos,icon)=>( pasos||[]).map(p=>`
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+      <div style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;">${p.paso||"·"}</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#fff;">${p.accion||""}</div>
+        <div style="font-size:11px;color:#0AAABF;margin-top:1px;">${p.que_buscar||""}</div>
+      </div>
+    </div>`).join("");
+
+  const ingSiHtml=(r.quimicos_si||[]).slice(0,5).map(i=>`
+    <div style="background:rgba(46,170,111,.1);border-left:3px solid #2EAA6F;border-radius:6px;padding:8px 10px;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+        <span style="font-size:13px;font-weight:700;color:#232F44;">✅ ${i.ingrediente||""}</span>
+        <span style="font-size:10px;color:#2EAA6F;font-weight:600;">${i.como_usar||""}</span>
+      </div>
+      <div style="font-size:11px;color:#555;">${i.beneficio||""}</div>
+      ${i.origen_asiatico?`<div style="font-size:10px;color:#aaa;margin-top:2px;font-style:italic;">🌸 ${i.origen_asiatico}</div>`:""}
+    </div>`).join("");
+
+  const ingNoHtml=(r.quimicos_no||[]).slice(0,3).map(i=>`
+    <div style="background:rgba(212,64,16,.08);border-left:3px solid #D44010;border-radius:6px;padding:8px 10px;margin-bottom:6px;">
+      <div style="font-size:13px;font-weight:700;color:#232F44;">⚠️ ${i.ingrediente||""}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px;">${i.razon||""}</div>
+      ${i.alternativa?`<div style="font-size:11px;color:#D44010;margin-top:2px;font-weight:600;">→ ${i.alternativa}</div>`:""}
+    </div>`).join("");
+
+  const ticketColor=av.nivel_ticket==="premium"?"#8B2500":av.nivel_ticket==="alto"?"#D44010":"#0AAABF";
 
   document.getElementById("result-wrap").innerHTML=`
-  <div class="card hero-card">
-    <div class="hero-top">
+
+  <!-- HERO CARD -->
+  <div style="background:linear-gradient(135deg,#232F44 0%,#1a2235 100%);border-radius:16px;padding:22px;margin-bottom:14px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(10,170,191,.08);"></div>
+    <div style="position:absolute;bottom:-20px;left:-20px;width:80px;height:80px;border-radius:50%;background:rgba(139,37,0,.1);"></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
       <div>
-        <div style="font-size:9px;color:#8B2500;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Análisis personalizado · The First Glow</div>
-        <div style="font-size:26px;font-weight:300;color:#232F44;letter-spacing:1px;margin-bottom:6px;">${ST.nombre}</div>
-        <div style="font-size:13px;color:#232F44;opacity:.6;font-style:italic;margin-bottom:10px;">${b?b.age:"—"} años · ${ST.ciudad} · ${ev.tipo_detectado||sk}</div>
-        ${bdayHtml}<div>${tags}</div>
+        <div style="font-size:10px;color:#0AAABF;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;">The First Glow · Análisis personalizado</div>
+        <div style="font-size:28px;font-weight:300;color:#fff;letter-spacing:1px;">${ST.nombre}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px;">${b?b.age:"—"} años · ${ST.ciudad}${bdayHtml}</div>
       </div>
-      <img src="${LOGO_BRASA}" style="height:48px;opacity:.35;" alt="Aori"/>
+      <img src="${LOGO_WHITE}" style="height:36px;opacity:.6;" alt="Aori"/>
+    </div>
+    <!-- Tipo de piel badge -->
+    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(252,231,240,.12);border:1px solid rgba(252,231,240,.2);border-radius:30px;padding:6px 16px;">
+      <span style="font-size:16px;">✨</span>
+      <span style="font-size:14px;font-weight:700;color:#FCE7F0;">${ev.tipo_detectado||sk}</span>
+    </div>
+    <!-- Preocupaciones -->
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:5px;">
+      ${preocp.map(p=>`<span style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);border-radius:20px;padding:3px 10px;font-size:11px;">${p}</span>`).join("")}
     </div>
   </div>
 
-  <div class="card">
-    <div class="stitle">Evaluación de piel ✨</div>
-    <p style="font-size:15px;color:#555;line-height:1.8;font-style:italic;margin-bottom:16px;">${ev.descripcion||""}</p>
-    <div class="eval-grid">
-      <div class="eval-box"><div class="eval-label" style="color:#D44010;">Estado actual</div><div class="eval-text">${ev.estado_actual||""}</div></div>
-      <div class="eval-box"><div class="eval-label" style="color:#0AAABF;">🌡️ Impacto del clima</div><div class="eval-text">${ev.impacto_clima||""}</div></div>
+  <!-- EVALUACIÓN + CLIMA grid -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid #EDE0D4;">
+      <div style="font-size:10px;font-weight:700;color:#D44010;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">🔍 Estado actual</div>
+      <div style="font-size:12px;color:#555;line-height:1.6;">${ev.estado_actual||""}</div>
     </div>
-    ${ev.observacion_visual?`<div class="obs-box"><div style="font-size:10px;color:#0AAABF;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">👁️ Observación visual</div><div class="eval-text">${ev.observacion_visual}</div></div>`:""}
+    <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid #EDE0D4;">
+      <div style="font-size:10px;font-weight:700;color:#0AAABF;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">🌡️ Tu clima</div>
+      <div style="font-size:12px;color:#555;line-height:1.6;">${ev.impacto_clima||""}</div>
+    </div>
   </div>
 
-  <div id="adv-section" class="card advisor-card hidden">
-    <div class="stitle" style="color:#D44010;">Vista interna — Advisor Aori 🔒</div>
-    <p style="font-size:14px;color:#555;margin-bottom:16px;line-height:1.6;">${av.diagnostico_comercial||""}</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-      <div class="advisor-box"><div style="font-size:9px;color:#A0527A;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Ingredientes a destacar</div><div>${(av.ingredientes_clave_a_buscar||[]).map(i=>`<span class="ing-tag-dark">${i}</span>`).join("")}</div></div>
-      <div class="advisor-box"><div style="font-size:9px;color:#A0527A;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">Perfil ticket</div><div style="font-size:18px;font-weight:700;color:#8B2500;text-transform:capitalize;">${av.nivel_ticket||""}</div></div>
+  ${ev.observacion_visual?`<div style="background:#FCE7F0;border-radius:12px;padding:14px;margin-bottom:14px;border-left:4px solid #8B2500;">
+    <div style="font-size:10px;font-weight:700;color:#8B2500;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">👁️ Observación visual</div>
+    <div style="font-size:12px;color:#8B2500;line-height:1.6;">${ev.observacion_visual}</div>
+  </div>`:""}
+
+  <!-- RUTINAS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div style="background:#232F44;border-radius:12px;padding:14px;">
+      <div style="font-size:11px;font-weight:700;color:#FCE7F0;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">☀️ Mañana</div>
+      ${rutinaHtml(r.rutina_recomendada?.manana,"☀️")}
     </div>
-    ${(av.objeciones||[]).map((ob,i)=>`<div class="obj-box"><div style="font-size:13px;color:#8B2500;font-style:italic;margin-bottom:5px;">"${ob}"</div>${av.respuestas_objeciones?.[i]?`<div style="font-size:13px;color:#555;">→ ${av.respuestas_objeciones[i]}</div>`:""}</div>`).join("")}
+    <div style="background:#1a2235;border-radius:12px;padding:14px;">
+      <div style="font-size:11px;font-weight:700;color:#FCE7F0;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">🌙 Noche</div>
+      ${rutinaHtml(r.rutina_recomendada?.noche,"🌙")}
+    </div>
   </div>
 
-  <div class="card"><div class="stitle">✅ Ingredientes que le funcionan</div>${(r.quimicos_si||[]).map(i=>ic(i,"si")).join("")}</div>
-  <div class="card"><div class="stitle">⚠️ Ingredientes a evitar o usar con cuidado</div>${(r.quimicos_no||[]).map(i=>ic(i,"no")).join("")}</div>
-  ${(r.combinaciones_peligrosas||[]).length?`<div class="card"><div class="stitle">🚫 Combinaciones a evitar</div>${(r.combinaciones_peligrosas||[]).map(c=>`<div class="combo-item"><span style="color:#D44010;font-weight:700;flex-shrink:0;">✕</span><p style="margin:0;font-size:13px;color:#555;line-height:1.5;">${c}</p></div>`).join("")}</div>`:""}
-  ${(r.rutina_recomendada?.manana||[]).length?`<div class="card"><div class="stitle">☀️ Rutina de mañana recomendada</div>${(r.rutina_recomendada.manana||[]).map(ri).join("")}</div>`:""}
-  ${(r.rutina_recomendada?.noche||[]).length?`<div class="card"><div class="stitle">🌙 Rutina de noche recomendada</div>${(r.rutina_recomendada.noche||[]).map(ri).join("")}</div>`:""}
-  ${(r.rutina_recomendada?.semanal||[]).length?`<div class="card"><div class="stitle">🌿 Tratamientos semanales</div>${(r.rutina_recomendada.semanal||[]).map(ri).join("")}</div>`:""}
-  ${r.ritual_consejo?`<div class="card consejo-card"><div style="font-size:10px;color:#0AAABF;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Consejo Aori ✨</div><p style="font-size:15px;color:#fff;line-height:1.8;font-style:italic;margin-bottom:20px;">${r.ritual_consejo}</p><p style="font-size:11px;color:rgba(255,255,255,.35);line-height:1.8;margin-bottom:16px;">Esta recomendación es una asesoría cosmética personalizada basada en la información proporcionada y, en su caso, en observación visual no diagnóstica. No sustituye una valoración médica o dermatológica. Si presentas irritación, alergia o reacción inesperada, suspende el uso del producto y consulta a un profesional de salud.</p><div style="text-align:center;"><img src="${LOGO_WHITE}" style="height:26px;opacity:.4;" alt="Aori"/><p style="color:rgba(255,255,255,.18);font-size:9px;letter-spacing:3px;margin:8px 0 0;text-transform:uppercase;">Glow with intention</p></div></div>`:""}
-  <div class="btn-row-center">
-    <button class="btn-ghost" style="font-size:15px;" onclick="resetAll()">Nueva asesoría</button>
-    <button class="btn-accent" style="font-size:15px;" onclick="window.print()">Imprimir análisis</button>
+  ${(r.rutina_recomendada?.semanal||[]).length?`
+  <div style="background:#F8F4F0;border-radius:12px;padding:14px;margin-bottom:14px;">
+    <div style="font-size:10px;font-weight:700;color:#8B2500;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">🌿 Tratamientos semanales</div>
+    ${(r.rutina_recomendada.semanal||[]).map(p=>`
+      <div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #EDE0D4;">
+        <span style="font-size:10px;background:#8B2500;color:#fff;border-radius:10px;padding:2px 7px;flex-shrink:0;margin-top:2px;">${p.frecuencia||""}</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#232F44;">${p.accion||""}</div>
+          <div style="font-size:11px;color:#D44010;">${p.que_buscar||""}</div>
+        </div>
+      </div>`).join("")}
+  </div>`:""}
+
+  <!-- INGREDIENTES -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid #EDE0D4;">
+      <div style="font-size:10px;font-weight:700;color:#2EAA6F;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">✅ Ingredientes aliados</div>
+      ${ingSiHtml}
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid #EDE0D4;">
+      <div style="font-size:10px;font-weight:700;color:#D44010;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">⚠️ Evitar o con cuidado</div>
+      ${ingNoHtml}
+      ${(r.combinaciones_peligrosas||[]).length?`
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #EDE0D4;">
+          <div style="font-size:10px;font-weight:700;color:#8B2500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">🚫 Combinar evita</div>
+          ${(r.combinaciones_peligrosas||[]).slice(0,2).map(c=>`<div style="font-size:11px;color:#555;margin-bottom:4px;line-height:1.5;">· ${c}</div>`).join("")}
+        </div>`:""}
+    </div>
+  </div>
+
+  <!-- CONSEJO + ADVISOR -->
+  <div style="background:linear-gradient(135deg,#8B2500,#D44010);border-radius:16px;padding:20px;margin-bottom:14px;">
+    <div style="font-size:10px;color:rgba(255,255,255,.6);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;">✨ Consejo Aori</div>
+    <p style="font-size:14px;color:#fff;line-height:1.8;font-style:italic;margin-bottom:16px;">${r.ritual_consejo||""}</p>
+    <div style="font-size:10px;color:rgba(255,255,255,.3);line-height:1.7;">Esta recomendación es una asesoría cosmética personalizada. No sustituye valoración médica. Si presentas reacción, consulta a un profesional.</div>
+  </div>
+
+  <!-- VISTA ADVISOR -->
+  <div id="adv-section" class="hidden" style="background:#fff;border:2px solid #D44010;border-radius:16px;padding:18px;margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#D44010;letter-spacing:2px;text-transform:uppercase;">🔒 Vista Advisor</div>
+      <div style="background:${ticketColor};color:#fff;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;text-transform:capitalize;">${av.nivel_ticket||""}</div>
+    </div>
+    <p style="font-size:13px;color:#555;line-height:1.6;margin-bottom:14px;">${av.diagnostico_comercial||""}</p>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;">
+      ${(av.ingredientes_clave_a_buscar||[]).map(i=>`<span style="background:#232F44;color:#fff;border-radius:4px;padding:3px 10px;font-size:11px;">${i}</span>`).join("")}
+    </div>
+    ${(av.objeciones||[]).map((ob,i)=>`
+      <div style="background:#FCE7F0;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid #D44010;">
+        <div style="font-size:12px;color:#8B2500;font-style:italic;margin-bottom:4px;">"${ob}"</div>
+        ${av.respuestas_objeciones?.[i]?`<div style="font-size:12px;color:#555;">→ ${av.respuestas_objeciones[i]}</div>`:""}
+      </div>`).join("")}
+  </div>
+
+  <div style="display:flex;gap:10px;justify-content:center;padding:10px 0 48px;">
+    <button class="btn-ghost" style="font-size:14px;" onclick="resetAll()">Nueva asesoría</button>
+    <button class="btn-accent" style="font-size:14px;" onclick="window.print()">🖨️ Imprimir</button>
   </div>`;
 }
 
