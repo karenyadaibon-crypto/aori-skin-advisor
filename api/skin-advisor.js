@@ -53,8 +53,8 @@ export default async function handler(req, res) {
 
       await fetch(SHEETS_WEBHOOK, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload),
+  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  body: new URLSearchParams({ data: JSON.stringify(payload) }).toString(),
   redirect: "follow"
 });
     } catch(sheetErr) {
